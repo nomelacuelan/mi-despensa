@@ -133,3 +133,13 @@ h2{font-family:var(--font-display);font-weight:700;font-size:1.2rem;margin:0}
 .msg.bot b{font-weight:700}
 .go{border:0;background:transparent;color:var(--accent);font:600 inherit var(--font-body);font-weight:600;cursor:pointer;text-decoration:underline;padding:0}
 h2{scroll-margin-top:90px}
+.searchrow{display:flex;gap:8px}
+.searchrow input{flex:1;min-width:0}
+.scanbtn{padding:0 14px;font-size:1.15rem}
+.rhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.scan{position:fixed;inset:0;z-index:30;background:rgb(0 0 0 / .55);display:flex;align-items:flex-end;justify-content:center}
+.scan-box{background:var(--bg);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;max-height:92vh;overflow-y:auto}
+.scan-cam{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;max-width:100%}
+.scan-cam video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-line{position:absolute;left:10%;right:10%;top:50%;height:2px;background:var(--bad);box-shadow:0 0 8px var(--bad)}
+.scan-hit{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}

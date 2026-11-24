@@ -12,15 +12,16 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const euro=n=>(+n||0).toLocaleString("es-ES",{style:"currency",currency:"EUR"});
 const monthKey=s=>s?s.slice(0,7):"";
 let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
-const VERSION_APP="1.0";
+const VERSION_APP="1.1";
 const ia=IA.cargarAjustesIA();
 const errTxt=e=>e instanceof IA.ErrorIA?e.message:"No he podido conectar con la IA. Prueba otra vez.";
 function needKey(el){if(ia.apiKey)return false;el.innerHTML=`Para usar la IA pega tu clave gratuita en <button class="go" data-goto="mas">Más → Ajustes</button>.`;return true}
 
 // ---------- Catálogo de Mercadona (catalogo.json, descargado de tienda.mercadona.es) ----------
-let CATALOG=[],CATS=[],SUBS={},catalogReady=false;
+let CATALOG=[],CATS=[],SUBS={},catalogReady=false;const EAN=new Map();
 async function loadCatalog(){try{const r=await fetch("catalogo.json");const j=await r.json();
-  CATALOG=j.p.map(([n,ci,si,d,k,pr,f])=>({n,c:j.cats[ci],s:j.subs[si],d,k,pr,f,_n:norm(n)}));
+  CATALOG=j.p.map(([n,ci,si,d,k,pr,f,e])=>({n,c:j.cats[ci],s:j.subs[si],d,k,pr,f,e,_n:norm(n)}));
+  for(const p of CATALOG)if(p.e)EAN.set(p.e,p);
   CATS=j.cats.filter(c=>CATALOG.some(p=>p.c===c));
   for(const p of CATALOG){SUBS[p.c]??=[];if(!SUBS[p.c].includes(p.s))SUBS[p.c].push(p.s)}
   activeCat=CATS.includes("Fruta y verdura")?"Fruta y verdura":CATS[0];activeSub=SUBS[activeCat][0];catalogReady=true;render();
@@ -84,6 +85,7 @@ const LS="midespensa.items.v1";
 const isProd=x=>x.status==="lista"||x.status==="casa"||x.status==="gastado"||x.status==="tirado";
 const byStatus=s=>items.filter(x=>x.status===s);
 function settings(){return items.find(x=>x.id==="ajustes")||{id:"ajustes",status:"ajustes",budget:0,favs:[]}}
+const favRec=()=>settings().favRec||[];const myRec=()=>settings().myRec||[];
 function loadLocal(){try{items=JSON.parse(localStorage.getItem(LS)||"[]")}catch(e){items=[]}}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(items))}catch(e){}}
 function put(it){const i=items.findIndex(x=>x.id===it.id);if(i>=0)items[i]=it;else items.push(it);saveLocal();render()}
@@ -231,26 +233,42 @@ function scoredRecipes(){const have=pantryKeys();
     const urgent=got.filter(k=>have.get(k)<=3&&have.get(k)>=0);
     const score=(r.r.length-miss.length)*10+got.length*3+urgent.length*8-miss.length*12;return{...r,miss,got,urgent,score}})
     .sort((a,b)=>b.score-a.score)}
+function myRecipeCard(r){return`<article class="recipe">
+      <div class="rhead"><h3>${esc(r.titulo)}</h3><button class="icon star on" data-delmy="${esc(r.id)}" aria-label="Quitar de favoritas">★</button></div>
+      <div class="meta"><span class="pill mute">${esc(r.aparato||"")}</span><span>${esc(r.minutos||"?")} min</span><span>${esc(r.raciones||2)} raciones</span><span class="pill mute">Creada con IA</span></div>
+      <div class="nutri" style="grid-template-columns:repeat(2,1fr)"><div><b>${esc(r.kcal_racion||"?")}</b>kcal/ración</div><div><b>${esc(r.proteina_g||"?")} g</b>proteína</div></div>
+      ${(r.usa||[]).length?`<p>Usa: ${esc(r.usa.join(", "))}</p>`:""}
+      <ol>${(r.pasos||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ol></article>`}
 function renderRecipes(){const have=pantryKeys();
   let list=scoredRecipes();
+  if(rfilter==="fav"){const fav=favRec();list=list.filter(r=>fav.includes(r.n));const mine=myRec();
+    if(!list.length&&!mine.length){$("#recipes").innerHTML=`<div class="empty" style="grid-column:1/-1"><b>Aún no tienes favoritas</b><p>Toca la ★ de una receta, guarda una idea de la IA o pídele al asistente «guárdame esta receta».</p></div>`;return}
+    $("#recipes").innerHTML=mine.map(myRecipeCard).join("")+list.map(r=>recipeCard(r,have)).join("");return}
   if(have.size)list=list.filter(r=>r.got.length>0);
   if(rfilter==="A"||rfilter==="M")list=list.filter(r=>r.a===rfilter);
   if(rfilter==="ready")list=list.filter(r=>!r.miss.length);
   const box=$("#recipes");
   if(!list.length){box.innerHTML=`<div class="empty" style="grid-column:1/-1"><p>${have.size?"Con este filtro no hay recetas que encajen con lo que tienes. Prueba otro filtro o pide ideas a la IA.":"Marca productos como comprados para ver recetas con lo que tienes."}</p></div>`;return}
-  box.innerHTML=list.slice(0,24).map(r=>{const ready=!r.miss.length;const sv=servings[r.n]||r.s;const f=sv/r.s;
+  box.innerHTML=list.slice(0,24).map(r=>recipeCard(r,have)).join("")}
+function recipeCard(r,have){const ready=!r.miss.length;const sv=servings[r.n]||r.s;const f=sv/r.s;const fav=favRec().includes(r.n);
     return`<article class="recipe" data-n="${esc(r.n)}">
-      <h3>${esc(r.n)}</h3>
+      <div class="rhead"><h3>${esc(r.n)}</h3><button class="icon star ${fav?"on":""}" data-fav="1" aria-label="${fav?"Quitar de":"Guardar en"} favoritas">★</button></div>
       <div class="meta"><span class="pill mute">${r.a==="A"?"Airfryer":"Microondas"}</span><span>${r.t} min</span>${have.size?`<span class="pill ${ready?"ok":"warn"}">${ready?"Lo tienes todo":`Faltan ${r.miss.length}`}</span>`:""}${r.urgent.length?`<span class="pill bad">Aprovecha lo que caduca</span>`:""}</div>
       <div class="tags">${[...new Set([...r.r,...r.o.filter(k=>have.has(k))])].map(k=>`<span class="tag ${!have.has(k)?"miss":r.urgent.includes(k)?"urgent":""}">${esc(label(k))}</span>`).join("")}</div>
       <div class="serv"><span>Raciones</span><button class="icon" data-sv="-1" aria-label="Menos raciones">−</button><b>${sv}</b><button class="icon" data-sv="1" aria-label="Más raciones">+</button><span class="hint">${f!==1?`multiplica cantidades × ${(+f.toFixed(2)).toLocaleString("es-ES")}`:""}</span></div>
       <div class="nutri"><div><b>${r.kcal}</b>kcal</div><div><b>${r.prot} g</b>proteína</div><div><b>${r.hc} g</b>hidratos</div><div><b>${r.gr} g</b>grasa</div></div>
       <ol>${r.p.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
       ${r.miss.length&&have.size?`<button class="btn ghost small" data-miss="${esc(r.miss.join(","))}">Añadir lo que falta a la lista</button>`:""}
-    </article>`}).join("")}
+    </article>`}
 $("#rfilter").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;rfilter=b.dataset.f;for(const x of $("#rfilter").children)x.setAttribute("aria-pressed",x===b);renderRecipes()});
 function productForKey(k){return CATALOG.filter(p=>p.k===k).sort((a,b)=>(a.pr||99)-(b.pr||99))[0]}
-$("#recipes").addEventListener("click",e=>{const sv=e.target.closest("button[data-sv]");
+function saveMyRecipe(r){const s=settings();const rec={id:uid(),titulo:String(r.titulo||"Receta"),aparato:String(r.aparato||""),minutos:+r.minutos||0,raciones:+r.raciones||2,kcal_racion:+r.kcal_racion||0,proteina_g:+r.proteina_g||0,usa:(r.usa||r.ingredientes||[]).map(String).slice(0,30),pasos:(r.pasos||[]).map(String).slice(0,20)};
+  put({...s,myRec:[rec,...myRec()]});return rec}
+$("#recipes").addEventListener("click",e=>{const fv=e.target.closest("button[data-fav]");
+  if(fv){const n=fv.closest(".recipe").dataset.n;const s=settings();const on=favRec().includes(n);put({...s,favRec:on?favRec().filter(x=>x!==n):[...favRec(),n]});toast(on?"Quitada de favoritas":"Guardada en favoritas ★");return}
+  const dm=e.target.closest("button[data-delmy]");
+  if(dm){const s=settings();put({...s,myRec:myRec().filter(x=>x.id!==dm.dataset.delmy)});toast("Receta quitada de favoritas");return}
+  const sv=e.target.closest("button[data-sv]");
   if(sv){const n=sv.closest(".recipe").dataset.n;const r=RECIPES.find(x=>x.n===n);servings[n]=Math.max(1,Math.min(12,(servings[n]||r.s)+ +sv.dataset.sv));renderRecipes();return}
   const b=e.target.closest("button[data-miss]");if(!b)return;
   for(const k of b.dataset.miss.split(",")){const p=productForKey(k);addToList(p||{n:label(k).charAt(0).toUpperCase()+label(k).slice(1),c:"Otros",d:7,k},true)}toast("Ingredientes añadidos a la lista")});
@@ -262,11 +280,12 @@ $("#ask-ai").addEventListener("click",async()=>{const out=$("#ai-out");const btn
   try{const data=await IA.pedirJSON({ajustes:ia,texto:`Eres un cocinero casero español. Solo tengo MICROONDAS y AIRFRYER (no hay fuego, vitrocerámica ni horno). Tengo en casa (días hasta que caduca):\n${P.slice(0,60).map(x=>`- ${x.n}: ${x.d} días`).join("\n")}\nSupón aceite, sal y especias básicas. Propón 3 platos sencillos hechos solo con microondas o airfryer que usen sobre todo lo que caduca antes. Responde solo con JSON: [{"titulo":"","aparato":"Airfryer|Microondas","minutos":0,"raciones":2,"kcal_racion":0,"proteina_g":0,"usa":["producto"],"pasos":["paso con tiempo y temperatura"]}]`});
     out.className="";out.innerHTML="";out.style.cssText="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))";
     for(const r of (Array.isArray(data)?data:[]).slice(0,3)){const art=document.createElement("article");art.className="recipe";
+      const sb=document.createElement("button");sb.className="btn ghost small";sb.textContent="★ Guardar en favoritas";sb.onclick=()=>{saveMyRecipe(r);sb.disabled=true;sb.textContent="★ Guardada";toast("Receta guardada en favoritas")};
       const h=document.createElement("h3");h.textContent=r.titulo||"Plato";
       const meta=document.createElement("div");meta.className="meta";meta.textContent=`${r.aparato||""} · ${r.minutos||"?"} min · ${r.raciones||2} raciones · ~${r.kcal_racion||"?"} kcal y ${r.proteina_g||"?"} g de proteína por ración`;
       const usa=document.createElement("p");usa.textContent="Usa: "+(r.usa||[]).join(", ");
       const ol=document.createElement("ol");for(const s of (r.pasos||[])){const li=document.createElement("li");li.textContent=s;ol.appendChild(li)}
-      art.append(h,meta,usa,ol);out.appendChild(art)}
+      art.append(h,meta,usa,ol,sb);out.appendChild(art)}
   }catch(e){out.className="hint";out.style.cssText="";out.textContent=errTxt(e)}
   btn.disabled=false});
 
@@ -296,7 +315,15 @@ const TOOLS=[
     const q=Math.max(1,Math.min(20,Math.round(+i.cantidad||1)));for(let k=0;k<q;k++)addToList(p,true);
     return `Añadido: ${q} × ${p.n}${p.f?` (${p.f})`:""}${p.pr?`, ${euro(p.pr)} cada uno`:""}`}},
  {name:"recetas_con_lo_que_tengo",description:"Devuelve las recetas de microondas y airfryer de la app que mejor encajan con lo que hay en casa, con lo que falta para cada una.",
-  execute:()=>scoredRecipes().slice(0,8).map(r=>({receta:r.n,aparato:r.a==="A"?"airfryer":"microondas",minutos:r.t,raciones:r.s,kcal_racion:r.kcal,falta:r.miss.map(label),pasos:r.p}))}
+  execute:()=>scoredRecipes().slice(0,8).map(r=>({receta:r.n,aparato:r.a==="A"?"airfryer":"microondas",minutos:r.t,raciones:r.s,kcal_racion:r.kcal,falta:r.miss.map(label),pasos:r.p}))},
+ {name:"guardar_receta_favorita",description:"Guarda una receta en las favoritas del usuario (Recetas → ★ Favoritas). Úsala cuando el usuario pida guardar una receta. Para una receta de la app basta el título exacto.",
+  parameters:{type:"object",properties:{titulo:{type:"string"},aparato:{type:"string",description:"Airfryer o Microondas"},minutos:{type:"number"},raciones:{type:"number"},kcal_racion:{type:"number"},proteina_g:{type:"number"},ingredientes:{type:"array",items:{type:"string"}},pasos:{type:"array",items:{type:"string"}}},required:["titulo"]},
+  execute:(i)=>{const t=String(i.titulo||"").trim();const app=RECIPES.find(r=>norm(r.n)===norm(t));
+    if(app){if(!favRec().includes(app.n))put({...settings(),favRec:[...favRec(),app.n]});return `Guardada en favoritas: ${app.n}`}
+    if(!(i.pasos||[]).length)throw new Error("Faltan los pasos de la receta");
+    const r=saveMyRecipe(i);return `Guardada en favoritas: ${r.titulo}`}},
+ {name:"ver_recetas_favoritas",description:"Devuelve las recetas favoritas guardadas por el usuario.",
+  execute:()=>({de_la_app:favRec(),creadas:myRec().map(r=>({titulo:r.titulo,aparato:r.aparato,minutos:r.minutos,pasos:r.pasos}))})}
 ];
 function fmtBot(el,t){el.innerHTML=esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}
 async function sendChat(text){text=text.trim();if(!text||chatBusy)return;
@@ -355,6 +382,45 @@ function render(){const L=byStatus("lista").length;const P=byStatus("casa");
   $("#c-lista").textContent=L||"";const urgent=P.filter(x=>daysLeft(x.exp)<=1).length;const c=$("#c-casa");c.textContent=urgent?`${urgent} ⚠`:(P.length||"");c.classList.toggle("alert",!!urgent);
   renderAlert();
   if(tab==="lista"){renderBrowse();renderList()}if(tab==="casa")renderPantry();if(tab==="recetas")renderRecipes();if(tab==="mas"){renderCuentas();renderAjustes()}}
+
+// ---------- Escáner de código de barras ----------
+let scanMode="lista",scanStream=null,scanTimer=null,scanBusy=false,lastCode="";
+function scanTarget(p){if(scanMode==="casa"){addToPantry(p)}else addToList(p)}
+async function openScanner(mode){scanMode=mode;lastCode="";$("#scan-title").textContent=mode==="casa"?"Escanear lo que tienes en casa":"Escanear para la lista";
+  $("#scan-res").innerHTML="";$("#scan-code").value="";$("#scan").hidden=false;$("#scan-cam").hidden=false;
+  const msg=$("#scan-msg");
+  if(!("BarcodeDetector" in window)||!navigator.mediaDevices?.getUserMedia){$("#scan-cam").hidden=true;msg.textContent="Este navegador no puede leer códigos con la cámara. Escribe los números que hay debajo del código de barras.";return}
+  let det;try{const f=await BarcodeDetector.getSupportedFormats();det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"].filter(x=>f.includes(x))})}catch(e){det=null}
+  if(!det){$("#scan-cam").hidden=true;msg.textContent="Tu móvil no puede leer códigos de barras aquí. Escribe los números.";return}
+  try{scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280}},audio:false})}
+  catch(e){$("#scan-cam").hidden=true;msg.textContent="No tengo permiso para usar la cámara. Actívalo en los ajustes de Chrome o escribe los números del código.";return}
+  const v=$("#scan-video");v.srcObject=scanStream;await v.play().catch(()=>{});
+  msg.textContent="Apunta al código de barras del envase.";
+  scanTimer=setInterval(async()=>{if(scanBusy||v.readyState<2)return;scanBusy=true;
+    try{const r=await det.detect(v);const c=r[0]?.rawValue;if(c&&c!==lastCode){lastCode=c;navigator.vibrate?.(60);await handleCode(c)}}catch(e){}
+    scanBusy=false},250)}
+function closeScanner(){clearInterval(scanTimer);scanTimer=null;scanStream?.getTracks().forEach(t=>t.stop());scanStream=null;$("#scan").hidden=true;render()}
+function hitCard(p,code){return`<div class="scan-hit"><div><b>${esc(p.n)}</b><br><small class="hint">${esc(p.f||"")}${p.pr?" · "+euro(p.pr):""}${code?" · "+esc(code):""}</small></div>
+  <div class="bar" style="justify-content:flex-start"><button class="btn small" data-hit="${CATALOG.indexOf(p)}">${scanMode==="casa"?"Añadir a «En casa»":"Añadir a la lista"}</button></div></div>`}
+async function handleCode(raw){let code=String(raw).replace(/\D/g,"");if(code.length===12)code="0"+code;
+  const res=$("#scan-res");$("#scan-msg").textContent=`Código ${code}`;
+  const p=EAN.get(code)||EAN.get(code.replace(/^0/,""));
+  if(p){res.innerHTML=hitCard(p,"");return}
+  res.innerHTML=`<p class="hint">No está en el catálogo de Mercadona. Buscando el producto…</p>`;
+  let name="";try{const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands,quantity`);const j=await r.json();
+    if(j.status===1)name=[j.product.product_name,j.product.brands].filter(Boolean).join(" ").trim()}catch(e){}
+  if(!name){res.innerHTML=`<p class="hint">No encuentro este código. Busca el producto por su nombre en la lista.</p>`;return}
+  const opts=fuzzy(name,3);
+  res.innerHTML=`<p class="hint">Es <b>${esc(name)}</b>. Lo más parecido en Mercadona:</p>`+opts.map(o=>hitCard(o,"")).join("")+
+    `<div class="scan-hit"><b>${esc(name)}</b><div class="bar" style="justify-content:flex-start"><button class="btn ghost small" data-hitname="${esc(name)}">Añadir con este nombre</button></div></div>`}
+$("#scan-res").addEventListener("click",e=>{const b=e.target.closest("button[data-hit],button[data-hitname]");if(!b)return;
+  const p=b.dataset.hit!==undefined?CATALOG[+b.dataset.hit]:{n:b.dataset.hitname,c:"Otros",d:7,k:guessKey(b.dataset.hitname)};
+  scanTarget(p);$("#scan-res").innerHTML=`<p class="hint">✅ ${esc(p.n)} añadido. Escanea el siguiente o cierra.</p>`;lastCode=""});
+$("#scan-form").addEventListener("submit",e=>{e.preventDefault();const v=$("#scan-code").value.trim();if(v.replace(/\D/g,"").length>=8)handleCode(v);else $("#scan-msg").textContent="Escribe los 8 o 13 números del código."});
+$("#scan-close").addEventListener("click",closeScanner);
+$("#scan").addEventListener("click",e=>{if(e.target.id==="scan")closeScanner()});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-scan]");if(b)openScanner(b.dataset.scan)});
+
 // ---------- Ajustes, tema y copias ----------
 function renderAjustes(){const k=$("#api-key");if(document.activeElement!==k)k.value=ia.apiKey||"";
   if(!$("#api-status").textContent)$("#api-status").textContent=ia.apiKey?`Clave guardada${ia.modelo?`. Modelo: ${ia.modelo}`:""}.`:"Sin clave: la lista, la despensa y las recetas funcionan igual; la IA no.";

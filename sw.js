@@ -1,6 +1,6 @@
 // Permite abrir la app sin conexión y la mantiene actualizada.
 // Cuando subas una versión nueva, cambia VERSION (y VERSION_APP en js/app.js).
-const VERSION = 'mi-despensa-v1';
+const VERSION = 'mi-despensa-v2';
 const ARCHIVOS = [
   './', './index.html', './manifest.webmanifest', './css/estilos.css', './js/app.js', './js/ia.js', './catalogo.json',
   './iconos/icono.svg', './iconos/icono-192.png', './iconos/icono-512.png', './iconos/apple-touch-icon.png',

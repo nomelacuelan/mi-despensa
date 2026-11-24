@@ -32,7 +32,7 @@
   <!-- LISTA -->
   <section id="v-lista">
     <div class="search">
-      <input id="q" type="search" placeholder="Busca entre los productos de Mercadona…" autocomplete="off">
+      <div class="searchrow"><input id="q" type="search" placeholder="Busca entre los productos de Mercadona…" autocomplete="off"><button class="btn scanbtn" data-scan="lista" aria-label="Escanear código de barras">📷</button></div>
       <div class="results" id="results" hidden></div>
     </div>
     <div class="cats" id="cats"></div>
@@ -63,7 +63,7 @@
     </div>
     <div class="bar">
       <h2>En casa, por caducidad</h2>
-      <button class="btn ghost small" id="add-manual">Añadir sin comprar</button>
+      <div class="bar" style="gap:6px"><button class="btn ghost small" data-scan="casa">📷 Escanear</button><button class="btn ghost small" id="add-manual">Añadir sin comprar</button></div>
     </div>
     <p class="hint">Fechas estimadas según el tipo de producto; cámbialas por la del envase si quieres. Al acabar algo, márcalo como <b>Gastado</b> o <b>Tirado</b> para llevar la cuenta del desperdicio.</p>
     <div id="pantry"></div>
@@ -78,6 +78,7 @@
       <button class="chip" aria-pressed="false" data-f="A">Airfryer</button>
       <button class="chip" aria-pressed="false" data-f="M">Microondas</button>
       <button class="chip" aria-pressed="false" data-f="ready">Lo tengo todo</button>
+      <button class="chip" aria-pressed="false" data-f="fav">★ Favoritas</button>
     </div>
     <div class="ai" id="ai-box">
       <div class="bar">
@@ -150,6 +151,15 @@
   <button role="tab" aria-selected="false" data-tab="chat"><span class="ico">💬</span><span>Asistente</span></button>
   <button role="tab" aria-selected="false" data-tab="mas"><span class="ico">☰</span><span>Más</span></button>
 </nav>
+<div class="scan" id="scan" hidden role="dialog" aria-modal="true" aria-label="Escanear código de barras">
+  <div class="scan-box">
+    <div class="bar"><b id="scan-title">Escanear producto</b><button class="icon" id="scan-close" aria-label="Cerrar">✕</button></div>
+    <div class="scan-cam" id="scan-cam"><video id="scan-video" playsinline muted></video><div class="scan-line"></div></div>
+    <p class="hint" id="scan-msg">Apunta al código de barras del envase.</p>
+    <div id="scan-res"></div>
+    <form id="scan-form" class="searchrow"><input class="field" id="scan-code" inputmode="numeric" pattern="[0-9]*" placeholder="O escribe los números del código"><button class="btn small" type="submit">Buscar</button></form>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="js/ia.js"></script>

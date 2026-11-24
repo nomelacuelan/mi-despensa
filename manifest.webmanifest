@@ -1,0 +1,23 @@
+{
+  "name": "Mi Despensa",
+  "short_name": "Mi Despensa",
+  "description": "Lista de la compra de Mercadona, caducidades, recetas de microondas y airfryer y asistente con IA.",
+  "lang": "es",
+  "start_url": "./#lista",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f6f2",
+  "theme_color": "#0d7348",
+  "icons": [
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "iconos/icono.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Lista de la compra", "url": "./#lista" },
+    { "name": "En casa", "url": "./#casa" },
+    { "name": "Recetas", "url": "./#recetas" },
+    { "name": "Asistente", "url": "./#chat" }
+  ]
+}

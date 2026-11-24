@@ -12,7 +12,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const euro=n=>(+n||0).toLocaleString("es-ES",{style:"currency",currency:"EUR"});
 const monthKey=s=>s?s.slice(0,7):"";
 let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
-const VERSION_APP="1.1";
+const VERSION_APP="1.2";
 const ia=IA.cargarAjustesIA();
 const errTxt=e=>e instanceof IA.ErrorIA?e.message:"No he podido conectar con la IA. Prueba otra vez.";
 function needKey(el){if(ia.apiKey)return false;el.innerHTML=`Para usar la IA pega tu clave gratuita en <button class="go" data-goto="mas">Más → Ajustes</button>.`;return true}
@@ -360,6 +360,12 @@ function renderCuentas(){const s=settings();const mk=monthKey(iso(today()));cons
   const all=byStatus("tirado");const cnt={};for(const x of all){cnt[x.name]=(cnt[x.name]||0)+1}
   const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
   $("#waste-list").innerHTML=top.length?`<div class="list"><div class="group-h">Lo que más tiras</div>${top.map(([n,c])=>`<div class="row" style="grid-template-columns:1fr auto"><div class="name"><b>${esc(n)}</b></div><span class="pill bad">${c} ${c===1?"vez":"veces"}</span></div>`).join("")}</div><p class="hint">Consejo: compra menos cantidad de estos productos o elige formatos más pequeños.</p>`:`<div class="empty"><p>Cuando marques algo como «Tirado» en «En casa» verás aquí qué productos se te echan a perder más.</p></div>`}
+function renderHistory(){const H=items.filter(x=>x.status==="gastado"||x.status==="tirado").sort((a,b)=>(b.done||"").localeCompare(a.done||"")).slice(0,25);
+  $("#history").innerHTML=H.length?`<div class="list">${H.map(it=>`<div class="row" style="grid-template-columns:1fr auto" data-id="${esc(it.id)}">
+    <div class="name"><b>${esc(it.name)}${(it.qty||1)>1?` ×${it.qty}`:""}</b><small><span class="pill ${it.status==="tirado"?"bad":"ok"}">${it.status==="tirado"?"Tirado":"Gastado"}</span> el ${fmtDate(it.done)}${it.exp?` · caducaba el ${fmtDate(it.exp)}`:""}</small></div>
+    <button class="btn ghost small" data-back="1">Devolver a casa</button></div>`).join("")}</div>`:`<div class="empty"><p>Aquí aparecerá lo que marques como «Gastado» o «Tirado».</p></div>`}
+$("#history").addEventListener("click",e=>{const b=e.target.closest("button[data-back]");if(!b)return;const it=items.find(x=>x.id===b.closest(".row").dataset.id);if(!it)return;
+  const o={...it,status:"casa"};delete o.done;put(o);toast(`${it.name} ha vuelto a «En casa»`)});
 $("#v-mas").addEventListener("change",e=>{if(e.target.id==="budget-in"){put({...settings(),budget:Math.max(0,+e.target.value||0)});toast("Presupuesto guardado")}});
 
 // ---------- Ejemplo ----------
@@ -381,7 +387,7 @@ document.addEventListener("click",e=>{const g=e.target.closest("[data-goto]");if
 function render(){const L=byStatus("lista").length;const P=byStatus("casa");
   $("#c-lista").textContent=L||"";const urgent=P.filter(x=>daysLeft(x.exp)<=1).length;const c=$("#c-casa");c.textContent=urgent?`${urgent} ⚠`:(P.length||"");c.classList.toggle("alert",!!urgent);
   renderAlert();
-  if(tab==="lista"){renderBrowse();renderList()}if(tab==="casa")renderPantry();if(tab==="recetas")renderRecipes();if(tab==="mas"){renderCuentas();renderAjustes()}}
+  if(tab==="lista"){renderBrowse();renderList()}if(tab==="casa")renderPantry();if(tab==="recetas")renderRecipes();if(tab==="mas"){renderCuentas();renderHistory();renderAjustes()}}
 
 // ---------- Escáner de código de barras ----------
 let scanMode="lista",scanStream=null,scanTimer=null,scanBusy=false,lastCode="";

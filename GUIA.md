@@ -51,6 +51,9 @@ Si el producto no es de Mercadona, la app lo busca en Open Food Facts (base de d
 ## 3. Actualizar la app
 Se actualiza sola. Para coger la versión nueva: ábrela con internet, ciérrala del todo desde apps recientes y vuelve a abrirla.
 
+## Si marcas algo como gastado o tirado por error
+**☰ Más → Últimos gastados y tirados → Devolver a casa**. Vuelve con sus fechas de compra y caducidad originales y no cuenta doble en el gasto.
+
 ## Copias de seguridad
 **☰ Más → Copia de seguridad → ⬇️ Hacer copia** y guárdala en Google Drive. Con **⬆️ Restaurar copia** la recuperas (también en otro móvil).
 
